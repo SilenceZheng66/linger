@@ -1733,8 +1733,10 @@ async function performWindowsInstaller(settings, dependencies) {
     : await install(c, installed);
 }
 
-// Windows PowerShell writes a UTF-8 BOM when it pipes a string to a child's
-// stdin. JSON.parse rejects that byte-order mark, so strip it before parsing.
+// Under Windows PowerShell 5.1, .NET Framework wraps a redirected stdin in a
+// writer using the console input encoding and flushes its preamble at start,
+// so with a UTF-8 console a BOM arrives before the bootstrap's JSON bytes.
+// JSON.parse rejects it, so strip it before parsing.
 export const parseWindowsInstallerRequest = (source) =>
   JSON.parse(source.charCodeAt(0) === 0xfeff ? source.slice(1) : source);
 

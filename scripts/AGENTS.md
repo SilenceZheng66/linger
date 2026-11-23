@@ -5,6 +5,10 @@ Scripts support existing build, generation, and verification entrypoints.
 ## Common Commands
 
 - `pnpm vitest run --no-file-parallelism scripts/<test-file>`: run one script test.
+- `pnpm dev:windows`: start the host development stack on Windows, which has
+  neither `sh` nor `make`. It runs the steps `pnpm dev` orchestrates.
+- `pnpm computer:release:windows`: build the Local Computer release a Windows
+  checkout serves from `/install/`.
 - `make check-scripts-fast`: run the fast repository script gate with bounded parallelism.
 - `make check-computer-release`: build and install the real Local Computer bundle.
 - `make check-scripts-heavy`: run Local Computer install, package, and release tests.

@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import {
@@ -16,6 +17,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -1273,3 +1275,39 @@ describe.skipIf(process.platform === "win32")(
     });
   },
 );
+
+describe("installer stdin entry", () => {
+  const helper = fileURLToPath(
+    new URL("./local-computer-windows-installer.mjs", import.meta.url),
+  );
+  const run = async (input: string) => {
+    const child = spawn(process.execPath, [helper], {
+      stdio: ["pipe", "ignore", "pipe"],
+    });
+    child.stdin.end(input, "utf8");
+    const exit = new Promise<number>((resolve, reject) => {
+      child.on("exit", (code) => resolve(code ?? -1));
+      child.on("error", reject);
+    });
+    const stderr = new Promise<string>((resolve) => {
+      let text = "";
+      child.stderr.setEncoding("utf8");
+      child.stderr.on("data", (chunk: string) => {
+        text += chunk;
+      });
+      child.stderr.on("end", () => resolve(text));
+    });
+    return { exit: await exit, stderr: await stderr };
+  };
+  it("strips the UTF-8 BOM that Windows PowerShell 5.1 writes to stdin", async () => {
+    // Both empty-settings runs fail on the same missing bootstrap root, so
+    // equal stderr proves the BOM never reaches JSON.parse, which would
+    // otherwise reject the input with "Unexpected token".
+    const bommed = await run("\uFEFF{}");
+    const clean = await run("{}");
+    expect(bommed.exit).toBe(1);
+    expect(clean.exit).toBe(1);
+    expect(bommed.stderr).not.toContain("Unexpected token");
+    expect(bommed.stderr).toBe(clean.stderr);
+  });
+});
